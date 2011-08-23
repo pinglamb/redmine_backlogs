@@ -150,29 +150,31 @@ module Backlogs
         created_day = created_on.to_date
         active_days = days.select{|d| d >= created_day}
 
+        return [nil] * (days.size + 1) if active_days.size == 0
+
+        active_days.unshift(active_days[0] - 1)
         values = [nil] * active_days.size
 
-        first = nil
-        if active_days.size != 0
-          first = send(property)
-          values.fill(first)
-          first = nil if active_days.size != days.size
+        journals = false
+        JournalDetail.find(:all, :order => "journals.created_on asc" , :joins => :journal,
+                                 :conditions => ["created_on <= ?
+                                                  and property = 'attr' and prop_key = '#{property}'
+                                                  and journalized_type = 'Issue' and journalized_id = ?",
+                                                  (active_days[-1] + 1).to_time, id]).each {|detail|
+          journals = true
+          jdate = detail.journal.created_on.to_date
+          i = active_days.index{|d| d >= jdate}
+          break unless i
 
-          JournalDetail.find(:all, :order => "journals.created_on asc" , :joins => :journal,
-                                   :conditions => ["created_on <= ?
-                                                    and property = 'attr' and prop_key = '#{property}'
-                                                    and journalized_type = 'Issue' and journalized_id = ?",
-                                                    (active_days[-1] + 1).to_time, id]).each {|detail|
-            jdate = detail.journal.created_on.to_date
-            i = active_days.index{|d| d >= jdate}
-            break unless i
-
-            values.fill(detail.value, i)
-          }
+          values.fill(detail.value, i)
+        }
+        if journals
           values[-1] = send(property)
+        else
+          values.fill(send(property))
         end
 
-        values = ([nil] * (days.size - active_days.size)) + [first] + values
+        values = ([nil] * (days.size - (active_days.size - 1))) + values
 
         @@backlogs_column_type ||= {}
         @@backlogs_column_type[property] ||= Issue.connection.columns(Issue.table_name).select{|c| c.name == "#{property}"}.collect{|c| c.type}[0]
