@@ -62,6 +62,9 @@ class RbTask < Issue
     else
       attribs = params.clone.delete_if {|k,v| !Issue.new.safe_attribute_names.include?(k.to_s) }
     end
+    # attribs[:remaining_hours] = 0 if IssueStatus.find(params[:status_id]).is_closed?
+    # If status id changed
+    attribs[:assigned_to_id] = User.current.id if self.assigned_to_id.blank? && (self.status_id != params[:status_id])
 
     valid_relationships = if is_impediment && params[:blocks] #if blocks param was not sent, that means the impediment was just dragged
                             validate_blocks_list(params[:blocks])
