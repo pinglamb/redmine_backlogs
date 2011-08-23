@@ -138,11 +138,12 @@ module Backlogs
         end
       end
 
-      def initial_value_for(property)
-        jd = JournalDetail.find(:first, :order => "journals.created_on asc" , :joins => :journal,
+      def value_at(property, time)
+        jd = JournalDetail.find(:first, :order => "journals.created_on desc" , :joins => :journal,
                                         :conditions => ["property = 'attr' and prop_key = '#{property}'
-                                                         and journalized_type = 'Issue' and journalized_id = ?", id])
-        return jd ? jd.old_value : self.send(property)
+                                                         and journalized_type = 'Issue' and journalized_id = ?
+                                                         and created_on <= ?", id, time])
+        return jd ? jd.value : send(property)
       end
 
       def history(property, days)
@@ -153,22 +154,22 @@ module Backlogs
 
         first = nil
         if active_days.size != 0
-          first = initial_value_for(property)
+          first = send(property)
           values.fill(first)
           first = nil if active_days.size != days.size
 
           JournalDetail.find(:all, :order => "journals.created_on asc" , :joins => :journal,
-                                   :conditions => ["created_on between ? and ?
+                                   :conditions => ["created_on <= ?
                                                     and property = 'attr' and prop_key = '#{property}'
                                                     and journalized_type = 'Issue' and journalized_id = ?",
-                                                    active_days[0].to_time, (active_days[-1] + 1).to_time, id]).each {|detail|
+                                                    (active_days[-1] + 1).to_time, id]).each {|detail|
             jdate = detail.journal.created_on.to_date
             i = active_days.index{|d| d >= jdate}
             break unless i
 
             values.fill(detail.value, i)
           }
-          values[-1] = self.send(property)
+          values[-1] = send(property)
         end
 
         values = ([nil] * (days.size - active_days.size)) + [first] + values
@@ -197,8 +198,14 @@ module Backlogs
       def initial_estimate
         return nil unless (RbStory.trackers + [RbTask.tracker]).include?(tracker_id)
 
+        if fixed_version_id
+          time = [fixed_version.sprint_start_date.to_time, created_on].max
+        else
+          time = created_on
+        end
+
         if leaf?
-          return initial_value_for(:estimated_hours)
+          return value_at(:estimated_hours, time)
         else
           e = self.leaves.collect{|t| t.initial_estimate}.compact
           return nil if e.size == 0
