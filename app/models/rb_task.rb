@@ -49,7 +49,7 @@ class RbTask < Issue
       story.descendants.each_with_index {|task, i|
         task = task.becomes(RbTask)
         task.rank = i + 1
-        tasks << task 
+        tasks << task
       }
     end
     return tasks
@@ -64,7 +64,7 @@ class RbTask < Issue
     end
     # attribs[:remaining_hours] = 0 if IssueStatus.find(params[:status_id]).is_closed?
     # If status id changed
-    attribs[:assigned_to_id] = User.current.id if self.assigned_to_id.blank? && (self.status_id != params[:status_id])
+    attribs[:assigned_to_id] = User.current.id if self.assigned_to_id.blank? && (self.status_id != params[:status_id].to_i)
 
     valid_relationships = if is_impediment && params[:blocks] #if blocks param was not sent, that means the impediment was just dragged
                             validate_blocks_list(params[:blocks])
@@ -174,11 +174,11 @@ class RbTask < Issue
   end
 
   def time_entry_add(params)
-    # Will also save time entry if only comment is filled, hours will default to 0. We don't want the user 
+    # Will also save time entry if only comment is filled, hours will default to 0. We don't want the user
     # to loose a precious comment if hours is accidently left blank.
     if !params[:time_entry_hours].blank? || !params[:time_entry_comments].blank?
-      @time_entry = TimeEntry.new(:issue => self, :project => self.project) 
-      # Make sure user has permission to edit time entries to allow 
+      @time_entry = TimeEntry.new(:issue => self, :project => self.project)
+      # Make sure user has permission to edit time entries to allow
       # logging time for other users
       if User.current.allowed_to?(:edit_time_entries, self.project)
         @time_entry.user_id = params[:time_entry_user_id]
