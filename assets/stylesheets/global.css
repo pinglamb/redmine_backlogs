@@ -22,6 +22,8 @@ a:hover{
   overflow:hidden;
   position:relative;
   width:100%;
+  box-shadow: 0 3px 4px #A0A0A0;
+  z-index:1000;
 }
 #toolbar .breadcrumbs{
   bottom:5px;
@@ -79,4 +81,11 @@ body.loading #refresh{
 }
 .ui-dialog .editor{
   display:block;
+}
+
+ul.ui-sortable {
+    min-height: 20px!important;
+}
+.tooltip_text{
+  display:none;
 }

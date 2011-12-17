@@ -23,6 +23,10 @@ class RbTask < Issue
     blocks = params.delete('blocks')
 
     task = new(attribs)
+    if params['parent_issue_id']
+      parent = Issue.find(params['parent_issue_id'])
+      task.start_date = parent.start_date
+    end
     task.save!
 
     raise "Not a valid block list" if is_impediment && !task.validate_blocks_list(blocks)
@@ -77,6 +81,18 @@ class RbTask < Issue
       self.parent.update_attribute(:status_id, self.status_id) if self.parent.status.is_default?
       move_before params[:next] unless is_impediment # impediments are not hosted under a single parent, so you can't tree-order them
       update_blocked_list params[:blocks].split(/\D+/) if params[:blocks]
+
+      if params.has_key?(:remaining_hours)
+        begin
+          self.remaining_hours = Float(params[:remaining_hours].to_s.gsub(',', '.'))
+        rescue ArgumentError, TypeError
+          RAILS_DEFAULT_LOGGER.warn "#{params[:remaining_hours]} is wrong format for remaining hours."
+        end
+        sprint_start = self.story.fixed_version.becomes(RbSprint).sprint_start_date if self.story
+        self.estimated_hours = self.remaining_hours if (sprint_start == nil) || (Date.today < sprint_start)
+        save
+      end
+                                    
       result
     else
       false
@@ -133,17 +149,30 @@ class RbTask < Issue
   end
 
   def burndown(sprint = nil)
-    unless @burndown
-      sprint ||= story.fixed_version.becomes(RbSprint)
-      if sprint && sprint.has_burndown?
-        days = sprint.days(:active)
-        @burndown = {:hr => history(:estimated_hours, days), :sprint => history(:fixed_version_id, days)}.transpose.collect{|h| h[:sprint] == sprint.id ? h[:hr] : nil}
-      else
-        @burndown = nil
-      end
-    end
+    return nil unless self.is_task?
+    sprint ||= self.fixed_version.becomes(RbSprint) if self.fixed_version
+    return nil if sprint.nil? || !sprint.has_burndown?
 
-    return @burndown
+    return Rails.cache.fetch("RbIssue(#{self.id}@#{self.updated_on}).burndown(#{sprint.id}@#{sprint.updated_on}-#{[Date.today, sprint.effective_date].min})") {
+      bd = nil
+      if sprint.has_burndown?
+        days = sprint.days(:active)
+        series = Backlogs::MergedArray.new
+        series.merge(:hours => history(:remaining_hours, days))
+        series.merge(:sprint => history(:fixed_version_id, days))
+        series.merge(:sprint_start => days.collect{|d| (d == sprint.sprint_start_date)} + [false])
+        series.each{|d|
+          if d.sprint != sprint.id
+            d.hours = nil
+          elsif d.sprint_start
+            d.hours = self.estimated_hours # self.value_at(:estimated_hours, self.sprint_start_date)
+          end
+        }
+        bd = series.series(:hours)
+      end
+
+      bd
+    }
   end
 
   def set_initial_estimate(hours)
@@ -163,13 +192,13 @@ class RbTask < Issue
         JournalDetail.connection.execute("update journal_details set value='#{hours}' where id = #{jd.id}")
 
         jd = JournalDetail.find(:first, :order => "journals.created_on asc", :joins => :journal,
-          :conditions => ["property = 'attr' and prop_key = 'estimated_hours' and journalized_type = 'Issue' and journalized_id = ? and created_on >= ?", id, jd.journal.created_on])
+          :conditions => ["property = 'attr' and prop_key = 'remaining_hours' and journalized_type = 'Issue' and journalized_id = ? and created_on >= ?", id, jd.journal.created_on])
         JournalDetail.connection.execute("update journal_details set old_value='#{hours}' where id = #{jd.id}") if jd
       end
     else
-      if hours != estimated_hours
+      if hours != remaining_hours
         j = Journal.new(:journalized => self, :user => User.current, :created_on => time)
-        j.details << JournalDetail.new(:property => 'attr', :prop_key => 'estimated_hours', :value => estimated_hours, :old_value => hours)
+        j.details << JournalDetail.new(:property => 'attr', :prop_key => 'remaining_hours', :value => remaining_hours, :old_value => hours)
         j.save!
       end
     end

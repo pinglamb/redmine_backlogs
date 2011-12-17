@@ -8,3 +8,4 @@ LICENSE
 -------
 This plugin is released under the GPL v2 license. See
 LICENSE for more information.
+

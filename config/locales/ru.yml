@@ -13,23 +13,11 @@ ru:
   backlogs_impediment: !binary |
     0JfQsNC00LXRgNC20LrQsA==
 
-  backlogs_inactive: !binary |
-    0J/RgNC+0LXQutGCINC90LUg0L/QvtC60LDQt9GL0LLQsNC10YIg0LDQutGC
-    0LjQstC90L7RgdGC0Lg=
-
   backlogs_points_burn_direction: !binary |
     0KLQvtGH0LrQuCDRgSDRg9C60LDQt9Cw0L3QuNC10LwsINGB0LrQvtC70YzQ
     utC+INGD0LbQtSDQstGL0L/QvtC70L3QtdC90L4g0LfQsNC00LDQvdC40Y8g
     0Lgg0YHQutC+0LvRjNC60L4g0LXRidGRINC+0YHRgtCw0ZHRgtGB0Y8g0YHQ
     tNC10LvQsNGC0Yw=
-
-  backlogs_product_backlog_is_empty: !binary |
-    0JHRjdC60LvQvtCzINC/0YDQvtC00YPQutGC0LAg0L/Rg9GB0YI=
-
-  backlogs_product_backlog_unsized: !binary |
-    0JLQtdGA0YUg0LHRjdC60LvQvtCz0LAg0L/RgNC+0LTRg9C60YLQsCDQuNC8
-    0LXQtdGCINC40YHRgtC+0YDQuNC4INGBINC90LXQvtC/0YDQtdC00LXQu9GR
-    0L3QvdGL0Lwg0YDQsNC30LzQtdGA0L7QvA==
 
   backlogs_product_backlog: !binary |
     0JHRjdC60LvQvtCzINC/0YDQvtC00YPQutGC0LAgKNGB0L/QuNGB0L7QuiDR
@@ -37,31 +25,31 @@ ru:
     0L3QvtGB0YLQuCwg0LrQvtGC0L7RgNGL0LUg0YPQv9C+0YDRj9C00L7Rh9C1
     0L3RiyDQv9C+INGB0YLQtdC/0LXQvdC4INCy0LDQttC90L7RgdGC0Lgp
 
-  backlogs_sizing_inconsistent: !binary |
-    0JjQt9C80LXQvdC10L3QuNC1INGA0LDQt9C80LXRgNC+0LIg0LjRgdGC0L7R
-    gNC40Lgg0L7RgtC90L7RgdC40YLQtdC70YzQvdC+INC40YUg0L7RhtC10L3Q
-    vtC6
-
-  backlogs_sprint_notes_missing: !binary |
-    0JfQsNC60YDRi9GC0YvQtSDRgdC/0YDQuNC90YLRiyDQsdC10Lcg0YDQtdGC
-    0YDQvtGB0L/QtdC60YLQuNCy0L3Ri9GFL9C+0LHQt9C+0YDQvdGL0YUg0LfQ
-    sNC80LXRh9Cw0L3QuNC5
-
-  backlogs_sprint_unestimated: !binary |
-    0JfQsNC60YDRi9GC0YvQtSDQuNC70Lgg0LDQutGC0LjQstC90YvQtSDRgdC/
-    0YDQuNC90YLRiyDRgSDQvdC10L7RhtC10L3RkdC90L3Ri9C80Lgg0LjRgdGC
-    0L7RgNC40Y/QvNC4
-
-  backlogs_sprint_unsized: !binary |
-    0J/RgNC+0LXQutGCINC40LzQtdC10YIg0LjRgdGC0L7RgNC40Lgg0L/QviDQ
-    sNC60YLQuNCy0L3Ri9C8INC40LvQuCDQvdC10LTQsNCy0L3QviDQt9Cw0LrR
-    gNGL0YLRi9C8INGB0L/RgNC40L3RgtCw0LwsINC00LvRjyDQutC+0YLQvtGA
-    0YvRhSDQvdC1INCx0YvQu9C4INGD0YHRgtCw0L3QvtCy0LvQtdC90Ysg0YDQ
-    sNC30LzQtdGA0Ys=
-
   backlogs_sprints: !binary |
     0KHQv9GA0LjQvdGC0Ys=
 
+  backlogs_statistics_active: Project show activity
+  backlogs_statistics_active_failed: Project shows no activity
+  backlogs_statistics_committed_velocity_stable: Committed velocity is stable across sprints
+  backlogs_statistics_committed_velocity_stable_failed: Committed velocity is not stable across sprints
+  backlogs_statistics_product_backlog_filled: Product backlog has stories
+  backlogs_statistics_product_backlog_filled_failed: Product backlog is empty
+  backlogs_statistics_product_backlog_sized: The stories at the top of the product backlog have sizes
+  backlogs_statistics_product_backlog_sized_failed: The top of the product backlog has unsized stories
+  backlogs_statistics_sizing_consistent: Story sizes are stable against their estimates
+  backlogs_statistics_sizing_consistent_failed: Story sizes vary against their estimates
+  backlogs_statistics_sizing_stddev: "Standard deviation on hours vs. points: %{value} hours"
+  backlogs_statistics_sprint_notes_available: Recently closed sprints have retrospective/review notes
+  backlogs_statistics_sprint_notes_available_failed: Closed sprints without retrospective/review notes
+  backlogs_statistics_sprints: Measured over %{value} sprints
+  backlogs_statistics_sprints_estimated: Active and recently closed sprint have task estimates
+  backlogs_statistics_sprints_estimated_failed: Closed or active sprints with unestimated stories
+  backlogs_statistics_sprints_sized: Active and recently closed sprints were sized
+  backlogs_statistics_sprints_sized_failed: Project has stories on active or recently closed sprints that were not sized
+  backlogs_statistics_velocity: "Velocity: %{value}"
+  backlogs_statistics_velocity_stddev: "Velocity standard deviation: %{value} points"
+  backlogs_statistics_yield: Project has good average yield
+  backlogs_statistics_yield_failed: Project has low average yield
   backlogs_story_tracker: !binary |
     0KLRgNC10LrQtdGA0Ysg0LjRgdGC0L7RgNC40Lg=
 
@@ -73,15 +61,6 @@ ru:
 
   backlogs_task: !binary |
     0JfQsNC00LDQvdC40LU=
-
-  backlogs_velocity_missing: !binary |
-    0KHQutC+0YDQvtGB0YLRjCDQtNC70Y8g0Y3RgtC+0LPQviDQv9GA0L7QtdC6
-    0YLQsCDQvdC1INC80L7QttC10YIg0LHRi9GC0Ywg0LLRi9GH0LjRgdC70LXQ
-    vdCw
-
-  backlogs_velocity_varies: !binary |
-    0KHQutC+0YDQvtGB0YLRjCDQt9C90LDRh9C40YLQtdC70YzQvdC+INC40LfQ
-    vNC10L3Rj9C10YLRgdGPINC/0L4g0YHQv9GA0LjQvdGC0LDQvA==
 
   backlogs_wiki_template: !binary |
     0KjQsNCx0LvQvtC9INC00LvRjyDRgdC/0YDQuNC90YLQsCDRgdGC0YDQsNC9
@@ -127,13 +106,14 @@ ru:
 
   error_taken: is already in use
   event_sprint_summary: "{{project}}: {{summary}}"
+  field_assigned_to: Assigned To
   field_backlogs_issue_type: !binary |
     0KLQuNC/INCx0Y3QutC70L7Qs9Cw
 
   field_blocks: !binary |
     0JHQu9C+0LrQuNGA0L7QstC60Lg=
 
-  field_initial_estimate: Initial estimate
+  field_remaining_hours: Remaining (hours)
   field_initial_story_points: !binary |
     0J3QsNGH0LDQu9GM0L3QsNGPINC+0YbQtdC90LrQsCDQuNGB0YLQvtGA0LjQ
     uA==
@@ -148,6 +128,7 @@ ru:
   field_position: !binary |
     0J/QvtC70L7QttC10L3QuNC1
 
+  field_priority: Priority
   field_release_end_date: !binary |
     0JTQsNGC0LAg0L7QutC+0L3Rh9Cw0L3QuNGPINCy0LXRgNGB0LjQuA==
 
@@ -161,6 +142,10 @@ ru:
   field_subject: !binary |
     0KHQvtC00LXRgNC20LDQvdC40LU=
 
+  field_time_entry_comments: Time Entry Comments
+  field_time_entry_hours: Time Entry Hours
+  field_time_entry_spend_on: Time Entry Spend on
+  field_time_entry_user_id: Time Entry User Id
   field_tracker_id: !binary |
     SUQg0YLRgNC10LrQtdGA0LA=
 
@@ -193,6 +178,10 @@ ru:
   label_chart_options: !binary |
     0JLRi9Cx0L7RgNGLINC60LDRgNGC0Ys=
 
+  label_close_completed_sprints: Close completed Sprints
+  label_column_width: Column width
+  label_download_sprint: Download
+  label_hide_completed_sprints: Hide Completed Sprints
   label_hours_ideal: ideal
   label_hours_remaining: remaining hours
   label_hours_required_burn_rate: required burn rate (hours)
@@ -205,6 +194,11 @@ ru:
   label_master_backlog: !binary |
     0JHRjdC60LvQvtCzINCg0YPQutC+0LLQvtC00LjRgtC10LvRjw==
 
+  label_new_sprint: New Sprint
+  label_new_story: New Story
+  label_no_data_to_show: No data to show
+  label_no_end: no end
+  label_no_start: no start
   label_not_prioritized: !binary |
     0LHQtdC3INC/0YDQuNC+0YDQuNGC0LXRgtCw
 
@@ -249,12 +243,14 @@ ru:
   label_release: !binary |
     0JLQtdGA0YHQuNGP
 
+  label_reset: Reset
   label_scrum_statistics: !binary |
     0KHRgtCw0YLQuNGB0YLQuNC60Lgg0YHQutGA0LDQvNCw
 
   label_select_all: !binary |
     0JLRi9Cx0YDQsNGC0Ywg0LLRgdGR
 
+  label_show_completed_sprints: Show Completed Sprints
   label_sprint_backlog: !binary |
     0LHRjdC60LvQvtCzINGB0L/RgNC40L3RgtCw
 
@@ -266,12 +262,6 @@ ru:
 
   label_sprint_name: !binary |
     0KHQv9GA0LjQvdGCICJ7e25hbWV9fSI=
-
-  label_sprint_velocity: !binary |
-    0KHQutC+0YDQvtGB0YLRjCB7e3ZlbG9jaXR5fX0sINC+0YHQvdC+0LLQsNC9
-    0L3QsNGPINC90LAg0YHQv9GA0LjQvdGC0LDRhSB7e3NwcmludHN9fSDRgdC+
-    INGB0YDQtdC00L3QuNC8INC60L7Qu9C40YfQtdGB0YLQstC+0Lwg0LTQvdC1
-    0Lkge3tkYXlzfX0u
 
   label_stories_tasks: !binary |
     0JjRgdGC0L7RgNC40Lgv0JfQsNC00LDQvdC40Y8=
@@ -286,6 +276,7 @@ ru:
     0J/QvtC00LDRh9CwIFdlYi3QutCw0LvQtdC90LTQsNGA0Y8g0YHQvtCx0YvR
     gtC40LkgKFdlYmNhbCk=
 
+  rb_auto_refresh: Auto-refresh backlogs/taskboard (seconds)
   rb_label_copy_tasks_all: !binary |
     0JLRgdC1ICjQmtC+0L/QuNGA0L7QstCw0YLRjCDQstGB0LUg0LfQsNC00LDQ
     vdC40Y8p
@@ -306,6 +297,7 @@ ru:
 
   rb_label_timelog_disable: Disable
   rb_label_timelog_enable: Enable
+  rb_show_burndown_in_sidebar: Show burndown chart in issues sidebar
   rb_task_cards_stories_then_tasks: First all stories, then all tasks
   rb_task_cards_story_follows_tasks: Tasks followed by their story
   rb_task_cards_tasks_follow_story: Story followed by their tasks
@@ -325,6 +317,12 @@ ru:
     0J7RgdGC0LDQstGI0LjQtdGB0Y8g0L7RhtC10L3QutC4INC40YHRgtC+0YDQ
     uNC4
 
+  story_description: Description
+  story_estimation_hours: Estimation (hours)
+  story_points: Points
+  story_remaining_hours: Remaining (hours)
+  story_spent_time: Spent Time
+  story_status: Status
   today_not_in_release_msg: !binary |
     0KLQtdC60YPRidCw0Y8g0LTQsNGC0LAg0L3QtSDQvdCw0YXQvtC00LjRgtGB
     0Y8g0LIg0L/RgNC10LTQtdC70LDRhSDQtNCw0YIg0LLQtdGA0YHQuNC4LiDQ

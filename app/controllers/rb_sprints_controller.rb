@@ -55,8 +55,8 @@ class RbSprintsController < RbApplicationController
     @sprint.stories.each{|s|
       ws << [s.tracker.name, s.id, nil, nil, {:value => s.subject, :style => bold}]
       bd = s.burndown
-      bd.delete(:status)
       bd.keys.sort{|a, b| l("label_#{a}") <=> l("label_#{b}")}.each{ |k|
+        next if k == :status
         label = l("label_#{k}")
         label = {:value => label, :comment => k.to_s} if [:points, :points_accepted].include?(k)
         ws << [nil, nil, nil, nil, label ] + bd[k]
@@ -95,5 +95,11 @@ class RbSprintsController < RbApplicationController
     end
 
     redirect_to :controller => 'rb_master_backlogs', :action => 'show', :project_id => @project.identifier
+  end
+
+  def close_completed
+    @project.close_completed_versions if request.put?
+
+    redirect_to :controller => 'rb_master_backlogs', :action => 'show', :project_id => @project
   end
 end

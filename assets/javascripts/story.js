@@ -15,6 +15,14 @@ RB.Story = RB.Object.create(RB.Issue, RB.EditableInplace, {
     j.find(".editable").live('mouseup', this.handleClick);
   },
 
+  afterUpdate: function(data, textStatus, xhr){
+    this.$.parents('.backlog').data('this').recalcVelocity();
+  },
+
+  afterCreate: function(data, textStatus, xhr){
+    this.$.parents('.backlog').data('this').recalcVelocity();
+  },
+
   beforeSave: function(){
     // Do nothing
   },
@@ -43,7 +51,7 @@ RB.Story = RB.Object.create(RB.Issue, RB.EditableInplace, {
     var states = RB.constants.story_states['transitions'][tracker_id][user_status][status_id];
     if (!states) { states = RB.constants.story_states['transitions'][tracker_id][user_status][RB.constants.story_states['transitions'][tracker_id][user_status]['default']]; }
 
-    if (states.indexOf(status_id) == -1) { // a non-available state is currently selected, tracker has changed
+    if (jQuery.inArray(status_id, states) == -1) { // a non-available state is currently selected, tracker has changed
       status_id = null;
 
       if (this.$.find('.tracker_id .v').text() == tracker_id) { // if we're switching back to the original tracker, select the original state
@@ -66,8 +74,12 @@ RB.Story = RB.Object.create(RB.Issue, RB.EditableInplace, {
   },
   
   getPoints: function(){
-    points = parseInt( this.$.find('.story_points').first().text() );
+    points = parseFloat( this.$.find('.story_points').first().text() );
     return ( isNaN(points) ? 0 : points );
+  },
+
+  getTracker: function(){
+	return this.$.find('.tracker_id .t').text();
   },
 
   getType: function(){
@@ -91,7 +103,10 @@ RB.Story = RB.Object.create(RB.Issue, RB.EditableInplace, {
     var data = "prev=" + (prev.length==1 ? this.$.prev().data('this').getID() : '') +
                "&fixed_version_id=" + sprint_id;
     
-    if(j.find('.editor').length > 0) data += "&" + j.find('.editor').serialize();
+    j.find('.editor').each(function() {
+        var value = jQuery(this).val();  
+        data += "&" + this.name + '=' + encodeURIComponent(value);
+    });    
     
     if( this.isNew() ){
       var url = RB.urlFor( 'create_story' );
@@ -107,8 +122,7 @@ RB.Story = RB.Object.create(RB.Issue, RB.EditableInplace, {
   },
 
   beforeSaveDragResult: function(){
-    console.log(this.$.parent());
-    this.$.parent().find('li.empty_list_item').remove();
+
   }
 });
   

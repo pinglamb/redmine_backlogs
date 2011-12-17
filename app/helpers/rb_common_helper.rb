@@ -1,3 +1,4 @@
+require 'color'
 module RbCommonHelper
   unloadable
   
@@ -6,7 +7,7 @@ module RbCommonHelper
   end
 
   def assignee_name_or_empty(story)
-    story.blank? || story.assigned_to.blank? ? "" : "#{story.assigned_to.firstname} #{story.assigned_to.lastname}"
+    story.blank? || story.assigned_to.blank? ? "" : "#{story.assigned_to.name}"
   end
 
   def blocked_ids(blocked)
@@ -14,7 +15,18 @@ module RbCommonHelper
   end
 
   def build_inline_style(task)
-    task.blank? || task.assigned_to.blank? ? '' : "style='background-color:#{task.assigned_to.backlogs_preference(:task_color)}'"
+    if (task.blank? || task.assigned_to.blank?)
+      ''
+    else
+      color_to = task.assigned_to.backlogs_preference(:task_color)
+      color_from = Color.new(color_to).lighten(0.5)
+      "style='
+background-color:#{task.assigned_to.backlogs_preference(:task_color)}; 
+background: -webkit-gradient(linear, left top, left bottom, from(#{color_from}), to(#{color_to}));
+background: -moz-linear-gradient(top, #{color_from}, #{color_to});
+filter:progid:DXImageTransform.Microsoft.Gradient(Enabled=1,GradientType=0,StartColorStr=#{color_from},EndColorStr=#{color_to});
+'"    
+    end
   end
 
   def build_inline_style_color(task)
@@ -114,8 +126,8 @@ module RbCommonHelper
     d.strftime("%B %d, %Y %H:%M:%S") + '.' + (d.to_f % 1 + add).to_s.split('.')[1]
   end
 
-  def estimated_hours(item)
-    item.estimated_hours.blank? || item.estimated_hours==0 ? "" : item.estimated_hours
+  def remaining_hours(item)
+    item.remaining_hours.blank? || item.remaining_hours==0 ? "" : item.remaining_hours
   end
 
   def workdays(start_day, end_day)

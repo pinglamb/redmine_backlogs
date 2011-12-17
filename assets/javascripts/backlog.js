@@ -24,14 +24,14 @@ RB.Backlog = RB.Object.create({
 
     // Make the list sortable
     list = this.getList();
-    list.sortable({ connectWith: '.stories',
-                    placeholder: 'placeholder',
-                    forcePlaceholderSize: true,
-                    dropOnEmpty: true,
-                    start: this.dragStart,
-                    stop: this.dragStop,
-                    update: function(e,u){ self.dragComplete(e, u) }
-                    });
+    list.sortable({connectWith: '.stories',
+                   placeholder: 'placeholder',
+                   forcePlaceholderSize: true,
+                   dropOnEmpty: true,
+                   start: this.dragStart,
+                   stop: this.dragStop,
+                   update: function(e,u){ self.dragComplete(e, u) }
+                  });
 
     if(this.isSprintBacklog()){
       sprint = RB.Factory.initialize(RB.Sprint, this.getSprint());
@@ -44,7 +44,7 @@ RB.Backlog = RB.Object.create({
       story = RB.Factory.initialize(RB.Story, this); // 'this' refers to an element with class="story"
     });
     
-    if (this.isSprintBacklog()) this.recalcVelocity();
+    this.recalcVelocity();
   },
 
   afterCreate: function(data, textStatus, xhr){
@@ -107,11 +107,21 @@ RB.Backlog = RB.Object.create({
   },
   
   dragStart: function(event, ui){ 
-    ui.item.addClass("dragging");
+    if (jQuery.support.noCloneEvent){
+      ui.item.addClass("dragging");
+    } else {
+      // for IE    
+      ui.item.draggable('enabled');
+    }
   },
   
   dragStop: function(event, ui){ 
-    ui.item.removeClass("dragging");  
+    if (jQuery.support.noCloneEvent){
+      ui.item.removeClass("dragging");
+    } else {
+      // for IE
+      ui.item.draggable('disable');
+    }
   },
   
   getSprint: function(){
@@ -165,12 +175,24 @@ RB.Backlog = RB.Object.create({
   },
 
   recalcVelocity: function(){
-    if( !this.isSprintBacklog() ) return true;
+    var tracker_total = new Array();
     total = 0;
     this.getStories().each(function(index){
+      var story = RB.$(this).data('this');
+      var story_tracker = story.getTracker();
       total += RB.$(this).data('this').getPoints();
+      if ('undefined' == typeof(tracker_total[story_tracker])) {
+         tracker_total[story_tracker] = 0;
+      }
+      tracker_total[story_tracker] += story.getPoints();
     });
-    this.$.children('.header').children('.velocity').text(total);
+    var sprint_points = this.$.children('.header').children('.velocity');
+    sprint_points.text(total);
+    var tracker_summary = "<b>Tracker statistics</b><br />";
+    for (var t in tracker_total) {
+       tracker_summary += '<b>' + t + ':</b> ' + tracker_total[t] + '<br />';
+    }
+    sprint_points.qtip('option', 'content.text', tracker_summary);
   },
 
   showBurndownChart: function(event){

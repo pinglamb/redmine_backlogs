@@ -139,6 +139,7 @@ Given /^I want to edit the story with subject (.+)$/ do |subject|
 end
 
 Given /^the (.*) project has the backlogs plugin enabled$/ do |project_id|
+  Rails.cache.clear
   @project = get_project(project_id)
 
   # Enable the backlogs plugin
@@ -218,7 +219,7 @@ Given /^I have made the following task mutations:$/ do |table|
     mutated = task.created_on if (mutated.to_date == task.created_on.to_date)
     mutated += time_offset("#{(no + 1)*10}m")
     Timecop.travel(mutated) do
-      task.estimated_hours = remaining.to_f unless remaining.blank?
+      task.remaining_hours = remaining.to_f unless remaining.blank?
       task.status_id = status if status
       task.save!
     end
@@ -299,6 +300,7 @@ Given /^the project has the following tasks:$/ do |table|
 
     hours = task.delete('estimate')
     params['estimated_hours'] = hours.to_f unless hours.blank?
+    params['remaining_hours'] = hours.to_f unless hours.blank?
 
     task.should == {}
 
@@ -335,6 +337,16 @@ end
 
 Given /^I am viewing the issues list$/ do
   visit url_for(:controller => 'issues', :action=>'index', :project_id => @project)
+  page.driver.response.status.should == 200
+end
+
+Given /^I am viewing the issues sidebar$/ do
+  visit url_for(:controller => 'rb_hooks_render', :action=>'view_issues_sidebar', :project_id => @project)
+  page.driver.response.status.should == 200
+end
+
+Given /^I am viewing the issues sidebar for (.+)$/ do |name|
+  visit url_for(:controller => 'rb_hooks_render', :action=>'view_issues_sidebar', :sprint_id => RbSprint.find_by_name(name).id)
   page.driver.response.status.should == 200
 end
 
@@ -378,7 +390,7 @@ end
 
 Given /^show me the task hours$/ do
   header = ['task', 'hours']
-  data = Issue.find(:all, :conditions => ['tracker_id = ? and fixed_version_id = ?', RbTask.tracker, @sprint.id]).collect{|t| [t.subject, t.estimated_hours.inspect]}
+  data = Issue.find(:all, :conditions => ['tracker_id = ? and fixed_version_id = ?', RbTask.tracker, @sprint.id]).collect{|t| [t.subject, t.remaining_hours.inspect]}
   show_table("Task hours", header, data)
 end
 

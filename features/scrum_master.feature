@@ -46,8 +46,7 @@ Feature: Scrum Master
       And the sprint named Sprint 001 should have 1 impediment named Good Impediment
 
   Scenario: View impediments
-    Given I am viewing the issues list
-      And I follow "Sprint 001"
+    Given I am viewing the issues sidebar for Sprint 001
      Then the request should complete successfully
      When I follow "Impediments"
      Then the request should complete successfully
@@ -102,24 +101,22 @@ Feature: Scrum Master
     Given I have set my API access key
       And I move the story named Story 4 down to the 1st position of the sprint named Sprint 004
       And I am logged out
-     When I download the calendar feed
-     Then the request should complete successfully
+     When I try to download the calendar feed, it should succeed
+      And the request should complete successfully
     Given I have guessed an API access key
-     When I download the calendar feed
-     Then the request should fail
+     When I try to download the calendar feed, it should fail
+      And the request should complete successfully
      
   Scenario: Download printable cards for the product backlog
     Given I have selected card label stock Avery 7169
-      And I am viewing the issues list
+      And I am viewing the issues sidebar
      When I follow "Product backlog cards"
      Then the request should complete successfully
 
   Scenario: Download printable cards for the task board
     Given I have selected card label stock Avery 7169
       And I move the story named Story 4 up to the 1st position of the sprint named Sprint 001
-      And I am viewing the issues list
-      And I follow "Sprint 001"
-     Then the request should complete successfully
+      And I am viewing the issues sidebar for Sprint 001
      When I follow "Sprint cards"
      Then the request should complete successfully
 

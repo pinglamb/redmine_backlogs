@@ -4,17 +4,27 @@ class RbStory < Issue
     acts_as_list
 
     def self.condition(project_id, sprint_id, extras=[])
+      if Issue.respond_to? :visible_condition
+        visible = Issue.visible_condition(User.current, :project => Project.find(project_id))
+      else
+      	visible = Project.allowed_to_condition(User.current, :view_issues)
+      end
+      visible = '1=1' # unless visible
+
       if sprint_id.nil?  
         c = ["
           project_id = ?
           and tracker_id in (?)
           and fixed_version_id is NULL
-          and is_closed = ?", project_id, RbStory.trackers, false]
+          and is_closed = ? and #{visible}", project_id, RbStory.trackers, false]
       else
+        unless sprint_id.kind_of? Array
+            sprint_id = [ sprint_id ]
+        end
         c = ["
           project_id = ?
           and tracker_id in (?)
-          and fixed_version_id = ?",
+          and fixed_version_id IN (?) and #{visible}",
           project_id, RbStory.trackers, sprint_id]
       end
 
@@ -35,7 +45,7 @@ class RbStory < Issue
       RbStory.find(:all,
             :order => RbStory::ORDER,
             :conditions => RbStory.condition(project_id, sprint_id),
-            :joins => :status,
+            :joins => [:status, :project],
             :limit => options[:limit]).each_with_index {|story, i|
         story.rank = i + 1
         stories << story
@@ -50,6 +60,16 @@ class RbStory < Issue
 
     def self.sprint_backlog(sprint, options={})
       return RbStory.backlog(sprint.project.id, sprint.id, options)
+    end
+
+    def self.backlogs_by_sprint(project, sprints, options={})
+        ret = RbStory.backlog(project.id, sprints.map {|s| s.id }, options)
+        sprint_of = {}
+        ret.each do |backlog|
+            sprint_of[backlog.fixed_version_id] ||= []
+            sprint_of[backlog.fixed_version_id].push(backlog)
+        end
+        return sprint_of
     end
 
     def self.stories_open(project)
@@ -82,10 +102,11 @@ class RbStory < Issue
 
     def self.trackers(type = :array)
       # somewhere early in the initialization process during first-time migration this gets called when the table doesn't yet exist
-      return [] unless ActiveRecord::Base.connection.tables.include?('settings')
-
-      trackers = Setting.plugin_redmine_backlogs[:story_trackers]
-      return [] if trackers.blank?
+      trackers = []
+      if ActiveRecord::Base.connection.tables.include?('settings')
+        trackers = Setting.plugin_redmine_backlogs[:story_trackers]
+        trackers = [] if trackers.blank?
+      end
 
       return trackers.join(',') if type == :string
 
@@ -186,7 +207,7 @@ class RbStory < Issue
       extras = ['and not issues.position is NULL and issues.position <= ?', self.position]
     end
 
-    @rank ||= Issue.count(:conditions => RbStory.condition(self.project.id, self.fixed_version_id, extras), :joins => :status)
+    @rank ||= Issue.count(:conditions => RbStory.condition(self.project.id, self.fixed_version_id, extras), :joins => [:status, :project])
 
     return @rank
   end
@@ -195,46 +216,54 @@ class RbStory < Issue
     return RbStory.find(:first,
                       :order => RbStory::ORDER,
                       :conditions => RbStory.condition(project_id, sprint_id),
-                      :joins => :status,
+                      :joins => [:status, :project],
                       :limit => 1,
                       :offset => rank - 1)
   end
 
   def burndown(sprint=nil)
-    unless @burndown
-      sprint ||= fixed_version.becomes(RbSprint)
+    return nil unless self.is_story?
+    sprint ||= self.fixed_version.becomes(RbSprint) if self.fixed_version
+    return nil if sprint.nil? || !sprint.has_burndown?
 
-      if sprint && sprint.has_burndown?
-        @burndown = {}
+    return Rails.cache.fetch("RbIssue(#{self.id}@#{self.updated_on}).burndown(#{sprint.id}@#{sprint.updated_on}-#{[Date.today, sprint.effective_date].min})") {
+      bd = {}
+
+      if sprint.has_burndown?
         days = sprint.days(:active)
 
         status = history(:status_id, days).collect{|s| s ? IssueStatus.find(s) : nil}
-        accepted = status.collect{|s| s ? (s.backlog == :accepted) : false}
-        active = status.collect{|s| s ? !s.is_closed? : false}
-        in_sprint = history(:fixed_version_id, days).collect{|s| s == sprint.id}
+
+        series = Backlogs::MergedArray.new
+        series.merge(:in_sprint => history(:fixed_version_id, days).collect{|s| s == sprint.id})
+        series.merge(:points => history(:story_points, days))
+        series.merge(:open => status.collect{|s| s ? !s.is_closed? : false})
+        series.merge(:accepted => status.collect{|s| s ? (s.backlog_is?(:success)) : false})
+        series.merge(:hours => ([0] * (days.size + 1)))
+
+        tasks.each{|task| series.add(:hours => task.burndown(sprint)) }
+
+        series.each {|datapoint|
+          if datapoint.in_sprint
+            datapoint.hours = 0 unless datapoint.open
+            datapoint.points_accepted = (datapoint.accepted ? datapoint.points : nil)
+            datapoint.points_resolved = (datapoint.accepted || datapoint.hours.to_f == 0.0 ? datapoint.points : nil)
+          else
+            datapoint.nilify
+            datapoint.points_accepted = nil
+            datapoint.points_resolved = nil
+          end
+        }
 
         # collect points on this sprint
-        @burndown[:points] = {:points => history(:story_points, days), :active => in_sprint}.transpose.collect{|p| p[:active] ? p[:points] : nil}
-
-        # collect hours on this sprint
-        @burndown[:hours] = tasks.collect{|t| t.burndown(sprint) }.transpose.collect{|d| d.compact.sum}
-        @burndown[:hours] = [nil] * (days.size + 1) if @burndown[:hours].size == 0
-        @burndown[:hours] = {:h => @burndown[:hours], :a => in_sprint}.transpose.collect{|h| h[:a] ? h[:h] : nil}
-
-        # points are accepted when the state is accepted
-        @burndown[:points_accepted] = {:points => @burndown[:points], :accepted => accepted}.transpose.collect{|p| p[:accepted] ? p[:points] : nil }
-        # points are resolved when the state is accepted _or_ the hours are at zero
-        @burndown[:points_resolved] = {:points => @burndown[:points], :hours => @burndown[:hours], :accepted => accepted}.transpose.collect{|p| (p[:hours].to_i == 0 || p[:accepted]) ? p[:points] : 0}
-
-        # set hours to zero after the above when the story is not active, would affect resolved when done before this
-        @burndown[:hours] = {:hours => @burndown[:hours], :active => active}.transpose.collect{|h| h[:active] ? h[:hours] : 0}
-
-      else
-        @burndown = nil
+        bd[:points] = series.series(:points)
+        bd[:points_accepted] = series.series(:points_accepted)
+        bd[:points_resolved] = series.series(:points_resolved)
+        bd[:hours] = series.collect{|datapoint| datapoint.open ? datapoint.hours : nil}
       end
-    end
 
-    return @burndown
+      bd
+    }
   end
 
 end

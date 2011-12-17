@@ -56,7 +56,7 @@ When /^I move the story named (.+) (up|down) to the (\d+)(?:st|nd|rd|th) positio
 end
 
 When /^I move the (\d+)(?:st|nd|rd|th) story to the (\d+|last)(?:st|nd|rd|th)? position$/ do |old_pos, new_pos|
-  @story_ids = page.all(:css, "#product_backlog_container .stories .story .id")
+  @story_ids = page.all(:css, "#product_backlog_container .stories .story .id .v")
 
   story = @story_ids[old_pos.to_i-1]
   story.should_not == nil
@@ -107,11 +107,13 @@ When /^I update the task$/ do
 end
 
 Given /^I visit the scrum statistics page$/ do
-  visit url_for(:controller => :rb_statistics, :action => :show)
+  visit url_for(:controller => 'rb_all_projects', :action => 'statistics')
 end
 
-When /^I download the calendar feed$/ do
-  visit url_for({ :key => @api_key, :controller => 'rb_calendars', :action => 'show', :format => 'xml', :project_id => @project })
+When /^I try to download the calendar feed, it should (succeed|fail)$/ do |status|
+  visit url_for({ :key => @api_key, :controller => 'rb_calendars', :action => 'ical', :project_id => @project })
+
+  raise "Calender feed download did not #{status} as expected" unless (status == 'succeed') == page.body.include?('BEGIN:VCALENDAR')
 end
 
 When /^I view the master backlog$/ do

@@ -6,40 +6,47 @@ module BacklogsPlugin
       # custom queries
 
       def view_issues_sidebar_planning_bottom(context={ })
-        locals = {}
-        locals[:sprints] = context[:project] ? RbSprint.open_sprints(context[:project]) : []
-        locals[:project] = context[:project]
-        locals[:sprint] = nil
-        locals[:webcal] = (context[:request].ssl? ? 'webcals' : 'webcal')
+        project = context[:project]
 
-        return '' unless locals[:project]
-        return '' if locals[:project].blank?
-        return '' unless locals[:project].module_enabled?('backlogs')
+        return '' unless project && !project.blank?
+        return '' unless project.module_enabled?('backlogs')
 
-        user = User.find_by_id(context[:request].session[:user_id])
-        locals[:key] = user ? user.api_key : nil
+        sprint_id = nil
 
         params = context[:controller].params
         case "#{params['controller']}##{params['action']}"
           when 'issues#show'
             if params['id'] && (issue = Issue.find(params['id'])) && (issue.is_task? || issue.is_story?) && issue.fixed_version
-              locals[:sprint] = issue.fixed_version.becomes(RbSprint)
+              sprint_id = issue.fixed_version_id
             end
 
           when 'issues#index'
             q = context[:request].session[:query]
             sprint = (q && q[:filters]) ? q[:filters]['fixed_version_id'] : nil
             if sprint && sprint[:operator] == '=' && sprint[:values].size == 1
-              locals[:sprint] = RbSprint.find_by_id(sprint[:values][0])
+              sprint_id = sprint[:values][0]
             end
         end
 
-        locals[:sprint] = nil if locals[:sprint] && !locals[:sprint].has_burndown?
+        url_options = {
+          :only_path  => false,
+          :controller => :rb_hooks_render,
+          :action     => :view_issues_sidebar,
+          :project_id => project.identifier,
+          :host => context[:request].host_with_port,
+          :protocol => context[:request].ssl? ? 'https' : 'http'
+        }
+        url_options[:sprint_id] = sprint_id if sprint_id
 
-        return context[:controller].send(:render_to_string, {
-            :partial => 'shared/view_issues_sidebar',
-            :locals => locals
-          })
+        # Why can't I access protect_against_forgery?
+        return %{
+          <div id="backlogs_view_issues_sidebar"></div>
+          <script type="text/javascript">
+            jQuery(document).ready(function() {
+              jQuery('#backlogs_view_issues_sidebar').load('#{url_for(url_options)}');
+            });
+          </script>
+        }
       end
 
       def view_issues_show_details_bottom(context={ })
@@ -49,14 +56,16 @@ module BacklogsPlugin
 
         snippet = ''
 
+        project = context[:project]
+
         if issue.is_story?
           snippet += "<tr><th>#{l(:field_story_points)}</th><td>#{RbStory.find(issue.id).points_display}</td></tr>"
           vbe = issue.velocity_based_estimate
           snippet += "<tr><th>#{l(:field_velocity_based_estimate)}</th><td>#{vbe ? vbe.to_s + ' days' : '-'}</td></tr>"
         end
 
-        if issue.is_task?
-          snippet += "<tr><th>#{l(:field_initial_estimate)}</th><td>#{issue.initial_estimate}</td></tr>"
+        if issue.is_task? && User.current.allowed_to?(:update_remaining_hours, project) != nil
+          snippet += "<tr><th>#{l(:field_remaining_hours)}</th><td>#{issue.remaining_hours}</td></tr>"
         end
 
         return snippet
@@ -66,7 +75,7 @@ module BacklogsPlugin
         snippet = ''
         issue = context[:issue]
 
-        return '' unless issue.project.module_enabled? 'backlogs'
+        return '' unless issue.project.module_enabled?('backlogs')
 
         #project = context[:project]
 
@@ -80,8 +89,8 @@ module BacklogsPlugin
           snippet += context[:form].text_field(:story_points, :size => 3)
           snippet += '</p>'
 
-          if issue.descendants.length != 0
-            snippet += javascript_include_tag 'jquery/jquery-1.4.2.min.js', :plugin => 'redmine_backlogs'
+          if issue.descendants.length != 0 && !issue.new_record?
+            snippet += javascript_include_tag 'jquery/jquery-1.6.2.min.js', :plugin => 'redmine_backlogs'
             snippet += <<-generatedscript
 
               <script type="text/javascript">
@@ -109,9 +118,9 @@ module BacklogsPlugin
           snippet += "#{radio_button_tag('copy_tasks', 'all:' + params[:copy_from], false)} #{l(:rb_label_copy_tasks_all)}</p>"
         end
 
-        if issue.is_task?
-          snippet += "<p><label for='initial_estimate'>#{l(:field_initial_estimate)}</label>"
-          snippet += text_field_tag('initial_estimate', issue.initial_estimate, :size => 3)
+        if issue.is_task? && !issue.new_record?
+          snippet += "<p><label for='remaining_hours'>#{l(:field_remaining_hours)}</label>"
+          snippet += text_field_tag('remaining_hours', issue.remaining_hours, :size => 3)
           snippet += '</p>'
         end
 
@@ -133,7 +142,7 @@ module BacklogsPlugin
 
           # this wouldn't be necesary if the schedules plugin
           # didn't disable the contextual hook
-          snippet += javascript_include_tag 'jquery/jquery-1.4.2.min.js', :plugin => 'redmine_backlogs'
+          snippet += javascript_include_tag 'jquery/jquery-1.6.2.min.js', :plugin => 'redmine_backlogs'
           snippet += <<-generatedscript
 
             <script type="text/javascript">
@@ -147,10 +156,15 @@ module BacklogsPlugin
       end
 
       def view_my_account(context={ })
-        return context[:controller].send(:render_to_string, {
-            :partial => 'shared/view_my_account',
-            :locals => {:user => context[:user], :color => context[:user].backlogs_preference(:task_color) }
-          })
+        return %{
+          <h3>#{l(:label_backlogs)}</h3>
+          <div class="box tabular">
+          <p>
+            #{label :backlogs, :task_color}
+            #{text_field :backlogs, :task_color, :value => context[:user].backlogs_preference(:task_color)}
+          </p>
+          </div>
+        }
       end
 
       def controller_issues_new_after_save(context={ })
@@ -203,17 +217,34 @@ module BacklogsPlugin
 
         if issue.is_task?
           begin
-            initial_estimate = Float(params[:initial_estimate])
+            issue.remaining_hours = Float(params[:remaining_hours])
           rescue ArgumentError, TypeError
-            initial_estimate = nil
+            issue.remaining_hours = nil
           end
-
-          issue.becomes(RbTask).set_initial_estimate(initial_estimate) if initial_estimate
+          issue.becomes(RbTask).set_initial_estimate(issue.remaining_hours) if issue.remaining_hours
+          issue.save
         end
       end
 
-      def view_layouts_base_html_head(context={ })
-        return context[:controller].send(:render_to_string, { :partial => 'shared/head' })
+      def view_layouts_base_html_head(context={})
+        return %{
+          <link rel="stylesheet" href="#{Engines::RailsExtensions::AssetHelpers.plugin_asset_path('redmine_backlogs', 'javascripts', 'jquery/jquery.jqplot/jquery.jqplot.min.css')}" type="text/css" />
+
+          #{javascript_include_tag 'jquery/jquery-1.6.2.min.js', :plugin => 'redmine_backlogs'}
+          #{javascript_include_tag 'jquery/jquery-ui-1.8.16.custom.min.js', :plugin => 'redmine_backlogs'}
+          #{javascript_include_tag 'jquery/jquery.jeditable.mini.js', :plugin => 'redmine_backlogs'}
+          #{javascript_include_tag 'jquery/jquery.cookie.js' ,:plugin => 'redmine_backlogs'}
+          #{javascript_include_tag 'jquery/jquery.scrollfollow.js' ,:plugin => 'redmine_backlogs'}
+          <!--[if IE]>#{javascript_include_tag 'jquery/jquery.jqplot/excanvas.js', :plugin => 'redmine_backlogs'}<![endif]-->
+          #{javascript_include_tag 'jquery/jquery.jqplot/jquery.jqplot.js', :plugin => 'redmine_backlogs'}
+          #{javascript_include_tag 'jquery/jquery.jqplot/plugins/jqplot.highlighter.js', :plugin => 'redmine_backlogs'}
+          #{javascript_include_tag 'jquery/jquery.jqplot/plugins/jqplot.canvasTextRenderer.min.js', :plugin => 'redmine_backlogs'}
+          #{javascript_include_tag 'jquery/jquery.jqplot/plugins/jqplot.canvasAxisTickRenderer.min.js', :plugin => 'redmine_backlogs'}
+          #{javascript_include_tag 'jquery/jquery.jqplot/plugins/jqplot.enhancedLegendRenderer.min.js', :plugin => 'redmine_backlogs'}
+
+          <script type="text/javascript" src="#{url_for(:controller => 'rb_all_projects', :action => 'server_variables')}"></script>
+          #{javascript_include_tag 'common.js', 'burndown.js', :plugin => 'redmine_backlogs'}
+        }
       end
     end
   end

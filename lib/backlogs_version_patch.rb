@@ -5,6 +5,11 @@ module Backlogs
     def self.included(base) # :nodoc:
       base.extend(ClassMethods)
       base.send(:include, InstanceMethods)
+
+      base.class_eval do
+        unloadable
+
+      end
     end
   
     module ClassMethods
@@ -14,7 +19,7 @@ module Backlogs
       def burndown
         return RbSprint.find_by_id(self.id).burndown
       end
-  
+
     end
   end
 end

@@ -90,9 +90,10 @@ RB.Model = RB.Object.create({
       var field = RB.$(this);
       var fieldType = field.attr('fieldtype')!=null ? field.attr('fieldtype') : 'input';
       var fieldName = field.attr('fieldname');
+      var fieldLabel = field.attr('fieldlabel');
       var input;
       
-      RB.$(document.createElement("label")).text(fieldName.replace(/_/ig, " ").replace(/ id$/ig,"")).appendTo(editor);
+      RB.$(document.createElement("label")).text(fieldLabel).appendTo(editor);
       input = fieldType=='select' ? RB.$('#' + fieldName + '_options').clone(true) : RB.$(document.createElement(fieldType));
       input.removeAttr('id');
       input.attr('name', fieldName);
@@ -299,22 +300,12 @@ RB.Model = RB.Object.create({
        success: function(d, t, x){
           self.afterSave(d,t,x);
           self.refreshTooltip(self);
-       }
+       },
+       error : function(x,t,e){ self.error(x,t,e); }
     });
-    
-//    RB.ajax({
-//      type: "POST",
-//      url: saveDir.url,
-//      data: saveDir.data,
-//      success   : function(d,t,x){
-//          alert('Request complete');
-//          self.afterSave(d,t,x);
-//          self.refreshTooltip();
-//      },
-//      error     : function(x,t,e){ self.error(x,t,e); }
-//    });
-    
+
     self.endEdit();
+    self.$.find('.editors').remove();
   },
 
   refreshTooltip: function(model) {

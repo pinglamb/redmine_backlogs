@@ -61,12 +61,24 @@ module Backlogs
       end
 
       def story
-        # the self.id test verifies we're not looking at a new, unsaved issue object
-        return nil unless self.id
+        if @rb_story.nil?
+          if self.new_record?
+            parent_id = self.parent_id
+            parent_id = self.parent_issue_id if parent_id.blank?
+            parent_id = nil if parent_id.blank?
+            parent = parent_id ? Issue.find(parent_id) : nil
 
-        unless @rb_story
-          @rb_story = Issue.find(:first, :order => 'lft DESC', :conditions => [ "root_id = ? and lft < ? and tracker_id in (?)", root_id, lft, RbStory.trackers ])
-          @rb_story = @rb_story.becomes(RbStory) if @rb_story
+            if parent.nil?
+              @rb_story = nil
+            elsif parent.is_story?
+              @rb_story = parent.becomes(RbStory)
+            else
+              @rb_story = parent.story
+            end
+          else
+            @rb_story = Issue.find(:first, :order => 'lft DESC', :conditions => [ "root_id = ? and lft < ? and rgt > ? and tracker_id in (?)", root_id, lft, rgt, RbStory.trackers ])
+            @rb_story = @rb_story.becomes(RbStory) if @rb_story
+          end
         end
         return @rb_story
       end
@@ -86,20 +98,28 @@ module Backlogs
       def velocity_based_estimate
         return nil if !self.is_story? || ! self.story_points || self.story_points <= 0
 
-        dpp = self.project.scrum_statistics.info[:average_days_per_point]
-        return nil if ! dpp
+        hpp = self.project.scrum_statistics.hours_per_point
+        return nil if ! hpp
 
-        return Integer(self.story_points * dpp)
+        return Integer(self.story_points * (hpp / 8))
       end
 
       def backlogs_before_save
-        @issue_before_change.position = (is_task? ? nil : position) if @issue_before_change # don't log position updates
+        if project.module_enabled?('backlogs') && (self.is_task? || self.story)
+          self.remaining_hours ||= self.estimated_hours
+          self.estimated_hours ||= self.remaining_hours
 
-        if project.module_enabled?('backlogs') && is_task?
-          estimated_hours = 0 if status.backlog == :success
-          position = nil
-          fixed_version_id = story.fixed_version_id if story
+          self.remaining_hours = 0 if self.status.backlog_is?(:success)
+
+          self.position = nil
+          self.fixed_version_id = self.story.fixed_version_id if self.story
+          self.tracker_id = RbTask.tracker
+        elsif self.is_story?
+          self.remaining_hours = self.leaves.sum("COALESCE(remaining_hours, 0)").to_f
         end
+
+        @issue_before_change.position = self.position if @issue_before_change # don't log position updates
+
         return true
       end
 
@@ -127,7 +147,7 @@ module Backlogs
             j.details << JournalDetail.new(:property => 'attr', :prop_key => 'fixed_version_id', :old_value => task.fixed_version_id, :value => fixed_version_id)
             j.save!
           }
-          connection.execute("update issues set fixed_version_id = #{connection.quote(fixed_version_id)} where id in (#{descendants.collect{|t| "#{t.id}"}.join(',')})") unless leaf?
+          connection.execute("update issues set tracker_id = #{RbTask.tracker}, fixed_version_id = #{connection.quote(fixed_version_id)} where root_id = #{self.root_id} and lft > #{self.lft} and rgt < #{self.rgt}")
 
           # safe to do by sql since we don't want any of this logged
           unless self.position
@@ -135,6 +155,10 @@ module Backlogs
             connection.execute('select max(position) from issues where not position is null').each {|i| max = i[0] }
             connection.execute("update issues set position = #{connection.quote(max)} + 1 where id = #{id}")
           end
+        end
+
+        if self.story || self.is_task?
+          connection.execute("update issues set tracker_id = #{RbTask.tracker} where root_id = #{self.root_id} and lft >= #{self.lft} and rgt <= #{self.rgt}")
         end
       end
 
@@ -205,9 +229,9 @@ module Backlogs
           else
             case @@backlogs_column_type[property]
               when :integer
-                Integer(v)
+                v.blank? ? nil : Integer(v)
               when :float
-                Float(v)
+                v.blank? ? nil : Float(v)
               when :string
                 v.to_s
               else
@@ -215,24 +239,6 @@ module Backlogs
             end
           end
         }
-      end
-
-      def initial_estimate
-        return nil unless (RbStory.trackers + [RbTask.tracker]).include?(tracker_id)
-
-        if fixed_version_id && fixed_version.sprint_start_date
-          time = [fixed_version.sprint_start_date.to_time, created_on].compact.max
-        else
-          time = created_on
-        end
-
-        if leaf?
-          return value_at(:estimated_hours, time)
-        else
-          e = self.leaves.collect{|t| t.initial_estimate}.compact
-          return nil if e.size == 0
-          return e.sum
-        end
       end
     end
   end
