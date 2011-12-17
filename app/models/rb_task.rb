@@ -73,6 +73,8 @@ class RbTask < Issue
                           end
 
     if valid_relationships && result = journalized_update_attributes!(attribs)
+      # Update Story to In Progres
+      self.parent.update_attribute(:status_id, self.status_id) if self.parent.status.is_default?
       move_before params[:next] unless is_impediment # impediments are not hosted under a single parent, so you can't tree-order them
       update_blocked_list params[:blocks].split(/\D+/) if params[:blocks]
       result
