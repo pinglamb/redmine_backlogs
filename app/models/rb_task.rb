@@ -66,9 +66,14 @@ class RbTask < Issue
     else
       attribs = params.clone.delete_if {|k,v| !Issue.new.safe_attribute_names.include?(k.to_s) }
     end
-    # attribs[:remaining_hours] = 0 if IssueStatus.find(params[:status_id]).is_closed?
-    # If status id changed
-    attribs[:assigned_to_id] = User.current.id if self.assigned_to_id.blank? && (self.status_id != params[:status_id].to_i)
+
+    # Auto assign task to current user when
+    # 1. the task is not assigned to anyone yet
+    # 2. task status changed (i.e. Updating task name or remaining hours won't assign task to user)
+    # Can be enabled/disabled in setting page
+    if Setting.plugin_redmine_backlogs[:auto_assign_task] && self.assigned_to_id.blank? && (self.status_id != params[:status_id].to_i)
+      attribs[:assigned_to_id] = User.current.id
+    end
 
     valid_relationships = if is_impediment && params[:blocks] #if blocks param was not sent, that means the impediment was just dragged
                             validate_blocks_list(params[:blocks])
@@ -77,7 +82,7 @@ class RbTask < Issue
                           end
 
     if valid_relationships && result = journalized_update_attributes!(attribs)
-      # Update Story to In Progres
+      # Update Story to In Progress
       self.parent.update_attribute(:status_id, self.status_id) if self.parent.status.is_default?
       move_before params[:next] unless is_impediment # impediments are not hosted under a single parent, so you can't tree-order them
       update_blocked_list params[:blocks].split(/\D+/) if params[:blocks]
